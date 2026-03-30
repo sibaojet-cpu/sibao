@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .tab.active {
+            background: #2a5298;
+            color: white;
+        }
+        
+        .sheet-container {
+            background: white;
+            border-radius: 15px;
+            padding: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 70vh;
+            border: none;
+            border-radius: 10px;
+        }
+        
+        .info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h3 {
+            color: #2a5298;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #2a5298;
+        }
+        
+        .stat-item .number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2a5298;
+        }
+        
+        .stat-item .label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
+        
+        @media (max-width: 768px) {
+            .tab {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            iframe {
+                height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Teacher Attendance System</h1>
+            <p>RFID-based attendance tracking - View all records in real-time</p>
+        </div>
+        
+        <div class="info-card">
+            <h3>📌 Quick Reference</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="number" id="lateThreshold">15</div>
+                    <div class="label">Lateness Threshold (Minutes)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" id="workingDays">5</div>
+                    <div class="label">Working Days per Week</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" id="sheetsCount">3</div>
+                    <div class="label">Active Sheets</div>
+                </div>
+            </div>
+            <div class="note">
+                💡 <strong>Note:</strong> Teachers are marked as "Late" if they arrive more than the threshold minutes after scheduled time. 
+                You can adjust the threshold in the Settings sheet.
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showSheet('Teachers')">👥 Teachers List</button>
+            <button class="tab" onclick="showSheet('Attendance')">📋 Attendance Records</button>
+            <button class="tab" onclick="showSheet('Settings')">⚙️ Settings</button>
+        </div>
+        
+        <div class="sheet-container">
+            <iframe id="sheetFrame" src=""></iframe>
+        </div>
+    </div>
+    
+    <script>
+        // Your Google Sheet published URL
+        const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSHhFxWnzYfGadrHBZDI20Ie0lHpPWGP_6p7oF00Xb3mAMFpxN89UaI6UQQYL8Vqvs0YtLk7sLYHiL4/pubhtml';
+        
+        // Sheet names and their gid (you can find these from the URL when clicking each sheet tab)
+        // Default gid for first sheet is usually 0
+        const sheets = {
+            'Teachers': { name: 'Teachers', gid: '0' },
+            'Attendance': { name: 'Attendance', gid: '1532367693' },  // Common gid for second sheet
+            'Settings': { name: 'Settings', gid: '32556839' }        // Common gid for third sheet
+        };
+        
+        // Try to get actual gids from the published URL
+        // If the above doesn't work, we'll use the default view
+        
+        function showSheet(sheetName) {
+            // Update active tab styling
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Build the URL for the specific sheet
+            let url = BASE_URL;
+            
+            // Add sheet parameter if we have the gid
+            if (sheets[sheetName] && sheets[sheetName].gid) {
+                url = BASE_URL + '?gid=' + sheets[sheetName].gid;
+            }
+            
+            // Load the sheet in iframe
+            document.getElementById('sheetFrame').src = url;
+        }
+        
+        // Function to try and find the correct gids
+        async function findSheetGids() {
+            // This is a helper function - you can manually find gids by:
+            // 1. Open your published sheet in browser
+            // 2. Click on each sheet tab
+            // 3. Look at the URL - it will have ?gid=XXXXXX
+            // 4. Update the gid values above
+            console.log('To find sheet GIDs:');
+            console.log('1. Open: ' + BASE_URL);
+            console.log('2. Click each sheet tab');
+            console.log('3. Copy the gid number from URL');
+            console.log('4. Update the sheets object above');
+        }
+        
+        // Load default sheet (Teachers)
+        function loadDefaultSheet() {
+            document.getElementById('sheetFrame').src = BASE_URL;
+        }
+        
+        // Initialize
+        loadDefaultSheet();
+        
+        // Optional: Try to extract settings info from the sheet
+        // Since we can't directly access sheet data from iframe due to CORS,
+        // we'll show a helpful message
+        console.log('Attendance Dashboard Ready!');
+        console.log('To view specific sheets, use the tabs above.');
+        
+        // You can manually update the threshold display if you know it
+        // For now, it shows default value
+    </script>
+</body>
+</html>
